@@ -1,3 +1,3 @@
-import RafflePicker as rp
+import raffle
 
-rp.get_prize_update()
+raffle.prize.get_prize_update()
