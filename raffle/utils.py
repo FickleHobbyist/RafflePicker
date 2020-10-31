@@ -6,5 +6,5 @@ def get_iso_wk(date_str):
 
 
 def ordinal(n):
-    ord_str = "%d%s" % (n, "tsn rhtdd"[(n//10 % 10 != 1)*(n % 10 < 4)*n % 10::4])
+    ord_str = "%d%s" % (n, "tsnrhtdd"[(n//10 % 10 != 1)*(n % 10 < 4)*n % 10::4])
     return ord_str
