@@ -89,7 +89,7 @@ def get_prize_update(plot=False):
 
     print(f"50/50 GOLD RAFFLE UPDATE! Total Prize: {total_prize:,.0f} gold with "
           f"{num_winners} {winner_str}. {one_line_prizes}"
-          f"{tickets_left:,.0f} {ticket_str} until next winner is unlocked!")
+          f"{tickets_left:,.0f} {ticket_str} until the next winner is unlocked!")
 
     if plot:
         fig, ax = plt.subplots()
