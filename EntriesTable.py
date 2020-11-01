@@ -1,3 +1,3 @@
-import RafflePicker as rp
+import raffle
 
-rp.write_entries_table()
+raffle.entries.write_entries_table()
