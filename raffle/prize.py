@@ -68,15 +68,15 @@ def get_prize_update(plot=False):
     tz = datetime.now().astimezone().tzinfo
     print(f"Hey Ravagers, prize update! {tickets_left:,.0f} {ticket_str} until next winner is unlocked!")
     print("```")
-    print(f"{'Place':^11} | {'Winnings':^24}|")
-    print(39 * "-")
+    print(f"{'Place':^11} | {'Winnings':^25}|")
+    print(40 * "-")
     prize_str = []
     for i in range(num_winners):
         tmp_str = "{:,.0f}".format(int(prize_gold[i]))
         prize_pct_str = f"({100 * prize_dist[i]:>6.2f}%)"
         prize_str.append(f"{raffle.utils.ordinal(i + 1) + ' Place:'}\n{tmp_str} gold\n{prize_pct_str}")
-        print(f"{raffle.utils.ordinal(i + 1) + ' Place: ':>10} | {tmp_str:>8} gold {prize_pct_str} |")
-    print(39 * "-")
+        print(f"{raffle.utils.ordinal(i + 1) + ' Place: ':>10} | {tmp_str:>9} gold {prize_pct_str} |")
+    print(40 * "-")
     print(f"{'Total':>11} | {total_prize:>8,.0f} gold")
     print(f"*As of {datetime.now().strftime('%Y-%m-%d %I:%M %p')} ({tz})")
     print("```")
