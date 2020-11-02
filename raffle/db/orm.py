@@ -31,23 +31,25 @@ class User(Base):
 class Drawing(Base):
     __tablename__ = 'drawings'
     id = Column(Integer, Sequence('drawing_id_seq'), primary_key=True)
-    draw_date = Column(Date, nullable=True, default=None)
+    date_drawn = Column(Date, nullable=True, default=None)
+    sales = relationship("Sale")
     winners = relationship("Winner")
 
     def __repr__(self):
-        return f"<Drawing(id={self.id}, draw_date={self.draw_date}, winners={self.winners}"
+        return f"<Drawing(id={self.id}, date_drawn={self.date_drawn}, sales={self.sales}, winners={self.winners}"
 
 
 class Winner(Base):
     __tablename__ = 'winners'
     id = Column(Integer, Sequence('winner_id_seq'), primary_key=True)
-    draw_date = Column(Date, ForeignKey('drawings.draw_date'), nullable=False)
+    drawing_id = Column(Date, ForeignKey('drawings.id'), nullable=False)
     user_name = Column(String, ForeignKey('users.name'), nullable=False)
+    rank = Column(Integer, nullable=False)
     winnings = Column(Integer, nullable=False)
     dwg = relationship("Drawing", back_populates="winners")
 
     def __repr__(self):
-        return f"<Winner(id={self.id}, draw_date={self.draw_date}, user_name={self.user_name}, winnings={self.winnings}"
+        return f"<Winner(id={self.id}, date_drawn={self.date_drawn}, user_name={self.user_name}, winnings={self.winnings}"
 
 
 class Sale(Base):
@@ -58,8 +60,9 @@ class Sale(Base):
     num_tickets = Column(Integer, nullable=False)
     prize_addition = Column(Boolean, nullable=False, default=False)
     time_created = Column(DateTime(timezone=True), server_default=func.now(pytz.utc))
-    draw_date = Column(Date, nullable=True, default=None)
+    drawing_id = Column(Integer, ForeignKey('drawings.id'), nullable=False)
 
+    drawing = relationship("Drawing", back_populates="sales")
     user = relationship("User", back_populates="user_sales")
 
     @reconstructor
