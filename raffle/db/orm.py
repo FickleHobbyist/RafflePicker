@@ -1,5 +1,5 @@
-from sqlalchemy import create_engine, Column, Integer, ForeignKey, String, Date, DateTime, Sequence, Boolean
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import create_engine, Column, Integer, ForeignKey, String, DateTime, Sequence, Boolean
+from sqlalchemy.ext.declarative import as_declarative
 from sqlalchemy.orm import relationship, validates, reconstructor
 from sqlalchemy.sql import func
 from raffle.db import Session
@@ -10,9 +10,16 @@ import tzlocal
 # engine = create_engine('sqlite:///raffle.db', echo=True)
 engine = create_engine('sqlite:///:memory:', echo=True)
 Session.configure(bind=engine)
-Base = declarative_base()
+
 
 name_length_limit = 25  # ESO specifies names can be up to 25 chars long
+
+
+@as_declarative()
+class Base:
+
+    def asdict(self):
+        return {col.name: getattr(self, col.name) for col in self.__table__.columns}
 
 
 class User(Base):
