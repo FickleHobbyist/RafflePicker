@@ -64,16 +64,20 @@ def add_sale(user_id: str, tickets_sold: int, prize_add: bool = False, session=N
 
         sale = Sale(user_name=user_id, num_tickets=tickets_sold, prize_addition=prize_add, drawing_id=drawing_id) # noqa
         session_.add(sale)
+        session_.flush()
+        sale_id_ = sale.id
         print(f"Successfully added sale of {tickets_sold} {'tickets' if tickets_sold > 1 else 'ticket'}"
               f" to user '{user_id}'.")
+        return sale_id_
 
     if session is None:
         with session_scope() as session:
-            __add_sale(session)
+            sale_id = __add_sale(session)
     else:
         # assert isinstance(session, Session)
-        __add_sale(session)
+        sale_id = __add_sale(session)
 
+    return sale_id
 
 def edit_sale(sale_id: int, tickets_sold: int = None, prize_add: bool = None):
     with session_scope() as session:
