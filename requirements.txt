@@ -34,3 +34,5 @@ urllib3==1.25.9
 
 discord~=1.0.1
 python-dotenv~=0.15.0
+dash>=1.17.0
+plotly>=4.12.0
