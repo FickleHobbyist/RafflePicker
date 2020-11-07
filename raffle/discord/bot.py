@@ -31,26 +31,40 @@ async def show_sales(ctx, n_sales: int):
 @bot.command(name='add_sale', help="Add a sale to the current drawing for the specified user_id, number of tickets "
                                    "sold, and (optionally) specify whether or not the sale is a prize addition only.")
 async def add_sale(ctx, user_id: str, num_tickets: int, prize_addition: bool = False):
-    rdbu.add_sale(
+    if ctx.message.mentions is not None and user_id.startswith('<@'):
+        user_id = ctx.message.mentions[0].nick if ctx.message.mentions[0].nick is not None\
+                                                    else ctx.message.mentions[0].name
+        user_id = "@" + user_id
+
+    sale_id = rdbu.add_sale(
         user_id=user_id,
         tickets_sold=num_tickets,
         prize_add=prize_addition)
+    sale_str = get_sale_display(sale_id)
+    await ctx.send(f'```Added sale with id={sale_id}. The new sale data is:\n\n{sale_str}\n\n'
+                   f'Use "!edit_sale" to make changes if necessary. See "!help edit_sale" for info.```')
 
 
 @bot.command(name='edit_sale', help='Edit a sale that already exists in the database given the sale id. Use '
                                     'show_sales to see recent sales. See "!help show_sales."')
 async def edit_sale(ctx, sale_id: int, tickets_sold: int = None, prize_add: bool = None):
     rdbu.edit_sale(sale_id, tickets_sold, prize_add)
-    s = rdbu.get_sale(sale_id)
-    idx = pd.Index([0])
-    sale = pd.DataFrame(s, index=idx).to_string(columns=['id', 'user_name', 'num_tickets', 'prize_addition'])
-    str_out = f'```Successfully edited sale_id={sale_id}. The new sale data is:\n\n{sale}```'
+    sale_str = get_sale_display(sale_id)
+    str_out = f'```Successfully edited sale_id={sale_id}. The updated sale data is:\n\n{sale_str}```'
+
     await ctx.send(str_out)
 
+
+def get_sale_display(sale_id: int):
+    s = rdbu.get_sale(sale_id)
+    idx = pd.Index([0])
+    sale_str = pd.DataFrame(s, index=idx).to_string(columns=['id', 'user_name', 'num_tickets', 'prize_addition'])
+    return sale_str
 
 # @edit_sale.error
 # async def info_error(ctx, error):
 #     # passes errors to the discord channel
 #     await ctx.send(error.__str__())
+
 
 bot.run(TOKEN)
