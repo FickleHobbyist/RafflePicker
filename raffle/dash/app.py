@@ -1,9 +1,20 @@
 import dash
 import dash_bootstrap_components as dbc
 import dash_html_components as html
+import raffle.db.utils as rdbu
 from dash.dependencies import Input, Output, State
 
-app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+rdbu.load_sample_data()
+
+example_users = [u['name'].lstrip('@') for u in rdbu.get_all_users()]
+
+app = dash.Dash(
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    meta_tags=[
+        {"name": "viewport", "content": "width=device-width, initial-scale=1"}
+    ],
+)
 
 PLOTLY_LOGO = "https://images.plot.ly/logo/new-branding/plotly-logomark.png"
 
@@ -41,27 +52,36 @@ navbar = dbc.Navbar(
     dark=True,
 )
 
-sale_input = dbc.Row(
-    [
+sale_input = [
+    dbc.Row(
+        dbc.Col(
+            html.H3("Enter new sale data below"), align='left'
+        ),
+    ),
+    dbc.Row([
         dbc.Col(
             dbc.InputGroup(
                 [dbc.InputGroupAddon("@", addon_type="prepend"),
                  dbc.Input(id="username-input",
                            placeholder="Username",
                            type="text",
-                           debounce=True)
+                           debounce=True,
+                           persistence=False,
+                           autoComplete=False,
+                           list='existing-users')
                  ],
-                className='mb-3'
             ),
+            width='auto',
         ),
         dbc.Col(
-            dbc.InputGroup(
-                dbc.Input(id="num-tickets-input",
-                          placeholder='Number of Tickets',
-                          type="number",
-                          min=1
-                          )
-            ),
+            dbc.Input(id="num-tickets-input",
+                      placeholder='# of Tickets',
+                      type="number",
+                      min=1,
+                      step=1,
+                      persistence=False
+                      ),
+            width='auto',
         ),
         dbc.Col(
             dbc.Checklist(
@@ -69,40 +89,101 @@ sale_input = dbc.Row(
                 options=[{"label": "Prize Addition", "value": 1}],
                 value=0,
                 switch=True,
-                persistence=True
+                persistence=False
             ),
-            style={"vertical-align": "middle", "horizontal-align": "center"},
+            width='auto',
         ),
         dbc.Col(
-            dbc.Button("Add Sale", id='sale-submit-button', color='primary')
-        )
-    ]
-)
+            dbc.Button("Add Sale", id='sale-submit-button', color='primary'),
+            width='auto',
+        ),
+    ],
+        align="center", form=True
+    )
+]
+
 sale_output = dbc.Row(
-    html.P(id='sale-output')
+    dbc.Col(
+        dbc.Alert(
+            "Placeholder text",
+            id='sale-output-alert',
+            dismissable=True,
+            fade=True,
+            is_open=False,
+            color='success',
+        ),
+    ), align='center',
 )
 
+sale_table = [
+    dbc.Row(
+        dbc.Col(html.H3('Sales History'))
+    ),
+    dbc.Form(
+        dbc.FormGroup([
+            dbc.Label('Showing', className='mr-2'),
+            dbc.Input(
+                id='n-sales-input',
+                placeholder=5,
+                type="number",
+                min=1, max=100, step=1,
+            ),
+            dbc.Label('sales', className='ml-2')
+        ]),
+        inline=True
+    ),
+]
+
+# Put the layout together
 app.layout = dbc.Container(
     [
         navbar,
-        html.Div([
-            html.H3("Enter new sale data below"),
-            sale_input,
-            sale_output
-        ])
-    ]
+        # html.P(),
+        *sale_input,
+        dbc.Row(dbc.Col(html.P())),
+        sale_output,
+        dbc.Row(dbc.Col(html.Hr())),
+        *sale_table,
+        # Data storage below here
+        html.Div(
+            html.Datalist([html.Option(value=usr) for usr in example_users],
+                          id='existing-users'),
+            style={'display': 'none'}
+        )
+    ],
 )
 
 
 @app.callback(
-    Output('sale-output', 'children'),
+    [Output('sale-output-alert', 'children'),
+     Output('sale-output-alert', 'color'),
+     Output('sale-output-alert', 'is_open')],
     [Input('sale-submit-button', 'n_clicks'),
      State('username-input', 'value'),
      State('num-tickets-input', 'value'),
      State('prize-addition-input', 'value')]
 )
 def add_sale_clicked(n: int, user_name: str, num_tickets: int, prize_addition: bool):
-    return f'User: @{user_name}, # Tickets: {num_tickets}, Prize Addition: {True if prize_addition == 1 else False}, N_Clicks: {n}'
+    prize_addition = prize_addition[0] if isinstance(prize_addition, list) else prize_addition
+    if prize_addition:
+        out_ch = [
+            html.H4('Success!'),
+            html.P('Added sale with the following information:'),
+            html.P(f'User: @{user_name} | # Tickets: {num_tickets} | '
+                   f'Prize Addition: {True if prize_addition == 1 else False} | '
+                   f'N_Clicks: {n}',
+                   className='mb-0'),
+        ]
+        color = 'success'
+    else:
+        out_ch = [
+            html.H4('Oops! Something went wrong.'),
+            html.P('Could not enter the sale as specified.',
+                   className='mb-0'),
+        ]
+        color = 'danger'
+
+    return out_ch, color, False if n is None else True
 
 
 # add callback for toggling the navbar collapse on small screens
