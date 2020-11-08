@@ -8,6 +8,17 @@ import csv
 import os
 
 
+def get_all_users():
+    user_dicts = []
+    with session_scope() as session:
+        users = session.query(User).order_by(User.name.asc()).all()
+        for user in users:
+            user_dicts.append(user.asdict())
+
+    user_dicts.sort(key=lambda u: u['name'].lower())
+    return user_dicts
+
+
 def user_exists(user_id: str, session) -> bool:
     # assert isinstance(session, Session)
     # find if user exists in users table
@@ -78,6 +89,7 @@ def add_sale(user_id: str, tickets_sold: int, prize_add: bool = False, session=N
         sale_id = __add_sale(session)
 
     return sale_id
+
 
 def edit_sale(sale_id: int, tickets_sold: int = None, prize_add: bool = None):
     with session_scope() as session:
