@@ -150,6 +150,15 @@ def get_last_sales(n: int = 5) -> dict:
     return sale_dicts
 
 
+def get_all_sales() -> dict:
+    sale_dicts = []
+    with session_scope() as session:
+        sales = session.query(Sale).all()
+        for sale in sales:
+            sale_dicts.append(sale.asdict())
+    return sale_dicts
+
+
 def get_sale(sale_id: int) -> dict:
     with session_scope() as session:
         sale = session.query(Sale).filter(Sale.id == sale_id).first()
