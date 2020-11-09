@@ -25,7 +25,8 @@ class Base:
 class User(Base):
     __tablename__ = 'users'
 
-    name = Column(String(name_length_limit), primary_key=True)
+    id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+    name = Column(String(name_length_limit), nullable=False, unique=True)
     sales = relationship("Sale")
     wins = relationship("Winner")
 
