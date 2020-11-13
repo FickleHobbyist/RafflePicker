@@ -1,18 +1,34 @@
-from sqlalchemy import create_engine, Column, Integer, ForeignKey, String, DateTime, Sequence, Boolean
+from sqlalchemy import create_engine, Column, Index, Integer, ForeignKey, String, DateTime, Sequence, Boolean
 from sqlalchemy.ext.declarative import as_declarative
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import relationship, validates, reconstructor
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, expression
 from raffle.db import Session
+from dotenv import load_dotenv
+import os
 import pytz
 import tzlocal
 
+load_dotenv()
+DB_URL = os.getenv('DB_URL')
 
 # engine = create_engine('sqlite:///raffle.db', echo=True)
-engine = create_engine('sqlite:///:memory:', echo=True)
+# engine = create_engine('sqlite:///:memory:', echo=True)
+engine = create_engine(DB_URL, echo=True)
 Session.configure(bind=engine)
 
 
 name_length_limit = 25  # ESO specifies names can be up to 25 chars long
+
+
+# noinspection PyPep8Naming
+class utcnow(expression.FunctionElement):
+    type = DateTime()
+
+
+@compiles(utcnow, 'postgresql')
+def pg_utcnow(element, compiler, **kw):
+    return "TIMEZONE('utc', CURRENT_TIMESTAMP)"
 
 
 @as_declarative()
@@ -32,7 +48,7 @@ class User(Base):
 
     @validates('name')
     def validate_name(self, key, name_):
-        assert name_.startswith('@')
+        assert "@" not in name_, 'name may not include @ symbol'
         return name_
 
     def __repr__(self):
@@ -41,11 +57,14 @@ class User(Base):
         return f"<User(name={self.name}, {n_sales} sale(s), {n_wins} win(s))>"
 
 
+Index('user_name_idx', func.lower(User.name), unique=True)
+
+
 class Drawing(Base):
     __tablename__ = 'drawings'
     id = Column(Integer, Sequence('drawing_id_seq'), primary_key=True)
-    date_started = Column(DateTime(timezone=True), nullable=False, server_default=func.now(pytz.utc))
-    date_drawn = Column(DateTime(timezone=True), nullable=True, default=None)
+    date_started = Column(DateTime, nullable=False, server_default=utcnow())
+    date_drawn = Column(DateTime, nullable=True, default=None)
     sales = relationship("Sale")
     winners = relationship("Winner")
 
@@ -84,7 +103,7 @@ class Sale(Base):
     user_name = Column(String(name_length_limit), ForeignKey('users.name'), nullable=False)
     num_tickets = Column(Integer, nullable=False)
     prize_addition = Column(Boolean, nullable=False, default=False)
-    time_created = Column(DateTime(timezone=True), server_default=func.now(pytz.utc))
+    time_created = Column(DateTime, server_default=utcnow())
     drawing_id = Column(Integer, ForeignKey('drawings.id'), nullable=False)
 
     drawing = relationship("Drawing", back_populates="sales")
