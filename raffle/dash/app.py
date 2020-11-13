@@ -6,33 +6,18 @@ from dash.dependencies import Input, Output, State
 import raffle.db.utils as rdbu
 import pandas as pd
 
-rdbu.load_sample_data()
-
-example_users = [u['name'].lstrip('@') for u in rdbu.get_all_users()]
-
-sale_data = rdbu.get_all_sales()
+example_users = [u['name'] for u in rdbu.get_all_users()]
 
 app = dash.Dash(
     external_stylesheets=[dbc.themes.BOOTSTRAP],
     meta_tags=[
         {"name": "viewport", "content": "width=device-width, initial-scale=1"}
     ],
+    title='Raffle Admin',
+    suppress_callback_exceptions=True
 )
 
 PLOTLY_LOGO = "https://images.plot.ly/logo/new-branding/plotly-logomark.png"
-
-search_bar = dbc.Row(
-    [
-        dbc.Col(dbc.Input(type="search", placeholder="Search")),
-        dbc.Col(
-            dbc.Button("Search", color="primary", className="ml-2"),
-            width="auto",
-        ),
-    ],
-    no_gutters=True,
-    className="ml-auto flex-nowrap mt-3 mt-md-0",
-    align="center",
-)
 
 navbar = dbc.Navbar(
     [
@@ -48,62 +33,121 @@ navbar = dbc.Navbar(
             ),
             href="#",
         ),
-        dbc.NavbarToggler(id="navbar-toggler"),
-        dbc.Collapse(search_bar, id="navbar-collapse", navbar=True),
+        # dbc.NavbarToggler(id="navbar-toggler"),
+        # dbc.Collapse(search_bar, id="navbar-collapse", navbar=True),
     ],
     color="dark",
     dark=True,
 )
 
 sale_input = [
-    dbc.Row(
+    dbc.Row([
         dbc.Col(
-            html.H3("Enter new sale data below"), align='left'
+            html.H3("Add new or edit existing sale data:"),
+            width=5
         ),
+        dbc.Col([
+            dbc.RadioItems(
+                id="add-edit-radio",
+                options=[
+                    {"label": "Add", "value": 1},
+                    {"label": "Edit", "value": 2},
+                ],
+                value=1,
+                persistence=True,
+                inline=True,
+                className='mt-1 d-flex justify-content-center',
+            ),
+        ],
+            width=2,
+        ),
+        dbc.Col([
+            dbc.Input(
+                value=None,
+                id="edit-sale-id-input",
+                placeholder='Sale ID to Edit',
+                type="number",
+                min=1,
+                step=1,
+                persistence=False,
+                disabled=True,
+            ),
+        ],
+            width=2
+        ),
+    ],
+        align='center',
+        className='mb-1 mt-1',
+        form=True
     ),
     dbc.Row([
         dbc.Col(
             dbc.InputGroup(
                 [dbc.InputGroupAddon("@", addon_type="prepend"),
-                 dbc.Input(id="username-input",
-                           placeholder="Username",
-                           type="text",
-                           debounce=True,
-                           persistence=False,
-                           autoComplete=False,
-                           list='existing-users')
+                 dbc.Input(
+                     value='',
+                     id="username-input",
+                     placeholder="Username",
+                     type="text",
+                     debounce=True,
+                     persistence=True,
+                     autoComplete=False,
+                     list='existing-users',
+                     maxLength=25,
+                 )
                  ],
             ),
-            width='auto',
+            width=3,
         ),
         dbc.Col(
-            dbc.Input(id="num-tickets-input",
-                      placeholder='# of Tickets',
-                      type="number",
-                      min=1,
-                      step=1,
-                      persistence=False
-                      ),
-            width='auto',
-        ),
-        dbc.Col(
-            dbc.Checklist(
-                id="prize-addition-input",
-                options=[{"label": "Prize Addition", "value": 1}],
-                value=0,
-                switch=True,
-                persistence=False
+            dbc.Input(
+                value=None,
+                id="num-tickets-input",
+                placeholder='Number of Tickets',
+                type="number",
+                min=1,
+                step=1,
+                persistence=False,
             ),
-            width='auto',
+            width=2,
         ),
         dbc.Col(
-            dbc.Button("Add Sale", id='sale-submit-button', color='primary'),
-            width='auto',
+            dbc.FormGroup([
+                dbc.Checkbox(
+                    id="prize-addition-input",
+                    checked=False,
+                    persistence=False,
+                    className='form-check-input'
+                ),
+                dbc.Label(
+                    'Prize Addition',
+                    html_for='prize-addition-input',
+                    className='form-check-label'
+                )
+            ],
+                check=True,
+                # inline=True,
+            ),
+
+            width=2,
+            className='d-flex justify-content-center'
         ),
+        dbc.Col([
+            dbc.Button(
+                "Add Sale",
+                id='sale-submit-button',
+                color='primary',
+                block=True
+            ),
+        ],
+            width=2,
+            align='center',
+        ),
+
     ],
         align="center",
         form=True
-    )
+    ),
 ]
 
 sale_output = dbc.Row(
@@ -119,39 +163,6 @@ sale_output = dbc.Row(
         ),
     ), align='center',
 )
-
-# sale_table = [
-#     dbc.Row(
-#         dbc.Col(html.H3('Sales History'))
-#     ),
-#     dbc.Form(
-#         dbc.FormGroup([
-#             dbc.Label('Showing', className='mr-2'),
-#             dbc.Input(
-#                 id='n-sales-input',
-#                 placeholder=5,
-#                 type="number",
-#                 min=1, max=100, step=1,
-#             ),
-#             dbc.Label('sales', className='ml-2')
-#         ]),
-#         inline=True
-#     ),
-# ]
-
-sale_col_clean = ['Sale ID', 'Username', '# Tickets', 'Prize Addition']
-
-sales_df = pd.DataFrame.from_dict(sale_data)
-
-sale_tab = [
-    dash_table.DataTable(
-        id='sales-table',
-        columns=[{'id': key, 'name': key, } for key in sale_data[0]],  # returns keys of the dict in first sale
-        data=sale_data,
-        page_size=10
-    )
-]
-
 
 tab_grp = [
     dbc.Card(
@@ -193,60 +204,163 @@ app.layout = dbc.Container(
 
 
 @app.callback(
-    [Output('sale-output-alert', 'children'),
+    [Output('username-input', 'value'),
+     Output('num-tickets-input', 'value'),
+     Output('prize-addition-input', 'checked'),
+     Output('edit-sale-id-input', 'invalid')],
+    [Input('edit-sale-id-input', 'n_submit'),
+     State('edit-sale-id-input', 'value')
+     ],
+)
+def edit_sale_id_populated(nsub, sale_id: int):
+    invalid = False
+    if sale_id is not None:
+        sale = rdbu.get_sale(sale_id)
+        if sale is not None:
+            return sale['user_name'], sale['num_tickets'], sale['prize_addition'], invalid
+        else:
+            invalid = True
+
+    return [], [], False, invalid
+
+
+@app.callback(
+    [Output("edit-sale-id-input", 'disabled'),
+     Output("edit-sale-id-input", 'value'),
+     Output('sale-submit-button', 'children')],
+    [Input('add-edit-radio', 'value'),
+     State("edit-sale-id-input", 'value')],
+)
+def add_edit_sale_toggled(value: int, current_id: int):
+    if value == 1:
+        return True, None, 'Add Sale'  # add sale
+    elif value == 2:
+        return False, current_id, 'Edit Sale'  # edit sale
+
+
+@app.callback(
+    [Output('username-input', 'invalid'),
+     Output('num-tickets-input', 'invalid'),
+     Output('sale-output-alert', 'children'),
      Output('sale-output-alert', 'color'),
      Output('sale-output-alert', 'is_open')],
     [Input('sale-submit-button', 'n_clicks'),
      State('username-input', 'value'),
      State('num-tickets-input', 'value'),
-     State('prize-addition-input', 'value')],
+     State('prize-addition-input', 'checked'),
+     State('add-edit-radio', 'value'),
+     State('edit-sale-id-input', 'value')],
 )
-def add_sale_clicked(n: int, user_name: str, num_tickets: int, prize_addition: bool):
-    prize_addition = prize_addition[0] if isinstance(prize_addition, list) else prize_addition
-    if prize_addition:
-        out_ch = [
-            html.H4('Success!'),
-            html.P('Added sale with the following information:'),
-            html.P(f'User: @{user_name} | # Tickets: {num_tickets} | '
-                   f'Prize Addition: {True if prize_addition == 1 else False} | '
-                   f'N_Clicks: {n}',
-                   className='mb-0'),
-            html.Hr(),
-            html.P('If you need to edit this sale, edit sale ID #xx in the sales table below.')
-        ]
-        color = 'success'
-    else:
-        out_ch = [
-            html.H4('Oops! Something went wrong.'),
-            html.P('Could not enter the sale as specified.',
-                   className='mb-0'),
-        ]
-        color = 'danger'
+def submit_sale_clicked(n: int, user_name: str, num_tickets: int, prize_addition: bool, add_edit_value: int,
+                        sale_id: int):
+    failure_content, failure_color = sale_failure_content()
+    # Verify all info is present
+    out = {'name-invalid': False,
+           'num-invalid': False,
+           'alert-children': failure_content,
+           'alert-color': failure_color,
+           'alert-open': False if n is None else True
+           }
+    if n is None:
+        return *out.values(),
 
-    return out_ch, color, False if n is None else True
+    flag = False
+    if user_name is None or (isinstance(user_name, (list, str)) and len(user_name) == 0):
+        out['name-invalid'] = True
+        flag = True
+    if num_tickets is None or (isinstance(num_tickets, list) and len(num_tickets) == 0):
+        out['num-invalid'] = True
+        flag = True
+    if flag:
+        return *out.values(),
+
+    if sale_id is None and add_edit_value == 1:
+        # user adding a new sale
+        sale_id = rdbu.add_sale(user_name, num_tickets, prize_addition)
+
+        out['alert-children'], out['alert-color'] = sale_success_content(sale_id, 'Added')
+    elif add_edit_value == 2:
+        rdbu.edit_sale(sale_id, user_name, num_tickets, prize_addition)
+        out['alert-children'], out['alert-color'] = sale_success_content(sale_id, 'Edited')
+    return *out.values(),
+
+
+def sale_success_content(sale_id, add_edit):
+    content = [
+        html.H4('Success!'),
+        html.P(f'{add_edit} sale with sale ID: {sale_id}.',
+               className='mb-0'),
+    ]
+    return content, 'success'
+
+
+def sale_failure_content():
+    content = [
+        html.H4('Oops! Looks like you forgot something.'),
+        html.P('The highlighted fields are required.',
+               className='mb-0'),
+    ]
+    return content, 'danger'
+
+
+# @app.callback(
+#     [],
+#     [Input('sale-output-alert', 'is_open'),
+#      State('sale-output-alert', 'color')]
+# )
+# def
+#
 
 
 @app.callback(
     Output('card-content', 'children'),
-    [Input('card-tabs', 'active_tab')]
+    [Input('card-tabs', 'active_tab'),
+     Input('sale-output-alert', 'is_open'),
+     ]
 )
-def tab_swap(active_tab):
+def tab_swap(active_tab, alert_open):
     if active_tab == 'sales-tab':
-        return sale_tab
+        return get_sale_table_content()
     else:
         return []
 
 
-# add callback for toggling the navbar collapse on small screens
-@app.callback(
-    Output("navbar-collapse", "is_open"),
-    [Input("navbar-toggler", "n_clicks")],
-    [State("navbar-collapse", "is_open")],
-)
-def toggle_navbar_collapse(n, is_open):
-    if n:
-        return not is_open
-    return is_open
+def get_sale_table_content():
+    sale_data = rdbu.get_all_sales()
+    sale_col_clean = ['Sale ID', 'Username', 'Number of Tickets', 'Prize Addition']
+    sales_df = pd.DataFrame.from_dict(sale_data)
+    sales_df = sales_df.drop(columns=['time_created'])
+
+    sale_tab = [
+        dash_table.DataTable(
+            id='sales-table',
+            columns=[{'id': key, 'name': val, } for key, val in zip(sales_df.columns, sale_col_clean)],
+            # returns keys of the dict in first sale
+            data=sales_df.to_dict('records'),
+            page_size=10,
+            editable=False,
+            filter_action='native',
+            sort_action='native',
+            sort_mode='multi',
+            cell_selectable=False,
+            sort_by=[{'column_id': 'id', 'direction': 'desc'}]
+        )
+    ]
+    return sale_tab
+
+# def get_drawing_table_content():
+
+
+# # add callback for toggling the navbar collapse on small screens
+# @app.callback(
+#     Output("navbar-collapse", "is_open"),
+#     [Input("navbar-toggler", "n_clicks")],
+#     [State("navbar-collapse", "is_open")],
+# )
+# def toggle_navbar_collapse(n, is_open):
+#     if n:
+#         return not is_open
+#     return is_open
 
 
 if __name__ == '__main__':
