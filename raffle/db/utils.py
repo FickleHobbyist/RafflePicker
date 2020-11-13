@@ -1,11 +1,13 @@
 from raffle.db.orm import Sale, User, Winner, Drawing
-from raffle.db import session_scope
+from raffle.db import session_scope, sample_users
 from datetime import datetime
 from sqlalchemy.sql import func
 from sqlalchemy import and_
 import raffle.entries
+import raffle.prize2 as rp2
 import csv
 import os
+import random
 
 
 def get_all_users():
@@ -19,10 +21,10 @@ def get_all_users():
     return user_dicts
 
 
-def user_exists(user_id: str, session) -> bool:
+def user_exists(user_name: str, session) -> bool:
     # assert isinstance(session, Session)
     # find if user exists in users table
-    user_query = session.query(User).filter_by(name=user_id).first()
+    user_query = session.query(User).filter_by(name=user_name).first()
     if user_query is None:
         tf = False
     else:
@@ -30,16 +32,16 @@ def user_exists(user_id: str, session) -> bool:
     return tf
 
 
-def add_user(user_id: str, session=None):
+def add_user(user_name: str, session=None):
 
     def __add_user(session_):
-        if user_exists(user_id, session_):
-            print(f"User {user_id} already exists in table 'users'.")
+        if user_exists(user_name, session_):
+            print(f"User {user_name} already exists in table 'users'.")
         else:
-            usr = User(name=user_id) # noqa
+            usr = User(name=user_name) # noqa
             session_.add(usr)
             # session.commit()
-            print(f"Successfully added {user_id} to table 'users'.")
+            print(f"Successfully added {user_name} to table 'users'.")
 
     if session is None:
         with session_scope() as session:
@@ -62,23 +64,23 @@ def add_drawing():
     return dwg_id
 
 
-def add_sale(user_id: str, tickets_sold: int, prize_add: bool = False, session=None):
+def add_sale(user_name: str, tickets_sold: int, prize_add: bool = False, session=None):
 
     def __add_sale(session_):
-        if not user_exists(user_id, session_):
-            add_user(user_id, session_)
+        if not user_exists(user_name, session_):
+            add_user(user_name, session_)
         cur_dwg = get_current_drawing(session_)
         if cur_dwg is None:
             drawing_id = add_drawing()
         else:
             drawing_id = cur_dwg.id
 
-        sale = Sale(user_name=user_id, num_tickets=tickets_sold, prize_addition=prize_add, drawing_id=drawing_id) # noqa
+        sale = Sale(user_name=user_name, num_tickets=tickets_sold, prize_addition=prize_add, drawing_id=drawing_id) # noqa
         session_.add(sale)
         session_.flush()
         sale_id_ = sale.id
         print(f"Successfully added sale of {tickets_sold} {'tickets' if tickets_sold > 1 else 'ticket'}"
-              f" to user '{user_id}'.")
+              f" to user '{user_name}'.")
         return sale_id_
 
     if session is None:
@@ -91,19 +93,22 @@ def add_sale(user_id: str, tickets_sold: int, prize_add: bool = False, session=N
     return sale_id
 
 
-def edit_sale(sale_id: int, tickets_sold: int = None, prize_add: bool = None):
+def edit_sale(sale_id: int, user_name: str = None, tickets_sold: int = None, prize_add: bool = None):
     with session_scope() as session:
         sale = session.query(Sale).filter(Sale.id == sale_id).first()
         assert sale is not None, f"Could not find sale with id={sale_id}."
+        if user_name is not None:
+            sale.user_name = user_name
         if tickets_sold is not None:
             sale.num_tickets = tickets_sold
         if prize_add is not None:
             sale.prize_addition = prize_add
 
 
-def add_winner(user_id: str, place: int, winnings: int):
+def add_winner(user_name: str, place: int, winnings: int):
     with session_scope() as session:
-        winner = Winner(user_name=user_id, rank=place, winnings=winnings) # noqa
+        cur_dwg = get_current_drawing(session)
+        winner = Winner(user_name=user_name, rank=place, winnings=winnings, drawing_id=cur_dwg.id) # noqa
         session.add(winner)
 
 
@@ -124,12 +129,12 @@ def get_drawing_sales_summary(current_drawing: Drawing = None):
         if current_drawing is None:
             current_drawing = get_current_drawing(session)
 
-        sales = session.query(Sale.user_name.label('user_id'), func.sum(Sale.num_tickets).label('total_tickets')) \
+        sales = session.query(Sale.user_name.label('user_name'), func.sum(Sale.num_tickets).label('total_tickets')) \
             .group_by(Sale.user_name) \
             .filter(and_(Sale.drawing_id == current_drawing.id, Sale.prize_addition.is_(False))) \
             .order_by(Sale.user_name).all()
 
-        pr_adds = session.query(Sale.user_name.label('user_id'), func.sum(Sale.num_tickets).label('total_tickets')) \
+        pr_adds = session.query(Sale.user_name.label('user_name'), func.sum(Sale.num_tickets).label('total_tickets')) \
             .group_by(Sale.user_name) \
             .filter(and_(Sale.drawing_id == current_drawing.id, Sale.prize_addition.is_(True))) \
             .order_by(Sale.user_name).all()
@@ -162,7 +167,7 @@ def get_all_sales() -> dict:
 def get_sale(sale_id: int) -> dict:
     with session_scope() as session:
         sale = session.query(Sale).filter(Sale.id == sale_id).first()
-        sale_dict = sale.asdict()
+        sale_dict = sale.asdict() if sale is not None else None
     return sale_dict
 
 
@@ -171,7 +176,7 @@ def load_from_gsheet():
     entries = raffle.entries.get_all_entrants()
     with session_scope() as session:
         for entry in entries:
-            add_sale(user_id=entry['user_id'],
+            add_sale(user_name=entry['user_name'],
                      tickets_sold=int(entry['num_entries']),
                      prize_add=entry['add_to_prize_only'] == 'TRUE',
                      session=session)
@@ -184,10 +189,37 @@ def load_sample_data():
         with open(f, newline='', mode='r') as csv_file:
             data = csv.DictReader(csv_file)
             for entry in data:
-                add_sale(user_id=entry['user_name'],
+                add_sale(user_name=entry['user_name'],
                          tickets_sold=int(entry['num_tickets']),
                          prize_add=entry['prize_addition'] == '1',  # this is because bool cannot reliably convert
                                                                     # strings to boolean values. shenanigans.
                          session=session)
                 print(f"User: {entry['user_name']}, num_tickets: {entry['num_tickets']}, "
                       f"prize_addition: {entry['prize_addition']}")
+
+
+def create_random_data():
+    # create 4 drawings
+    for i in range(4):
+        add_drawing()
+        # in each drawing, add random number of sales to random users, with random number of tickets per sale
+        n_sales = random.randint(30, 100)
+        with session_scope() as session:
+            add_sale(user_name='GreymoorRavagersBank', tickets_sold=50, prize_add=True, session=session)
+            for _ in range(n_sales):
+                n_tickets = random.randint(1, 50)
+                add_sale(user_name=random.choice(sample_users),
+                         tickets_sold=n_tickets,
+                         prize_add=False,
+                         session=session)
+
+        # pick winners and close drawing for all but last drawing
+        if i < 3:
+            winners = rp2.get_winners()
+            for winner_name, place, winnings in winners:
+                # add winners to table
+                add_winner(user_name=winner_name,
+                           place=place,
+                           winnings=winnings)
+            # close drawing
+            close_drawing()
