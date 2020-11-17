@@ -1,5 +1,6 @@
 import random
 import raffle
+from raffle.utils import ordinal
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
@@ -50,7 +51,7 @@ def get_winners(entrants=None):
     for i in range(num_winners):
         winners.extend([random.choice(pick_list)])
         prize_str = "{:,.0f}".format(int(prize_amounts[i]))
-        print(f"\t{raffle.utils.ordinal(i+1) + ' Place:':>11} {winners[i]:<15} |"
+        print(f"\t{ordinal(i + 1) + ' Place:':>11} {winners[i]:<15} |"
               f"{prize_str:>10} gold ( {f'{100 * prize_dist[i]:.2f}% )':>9}")
         # remove all instances of this winner from the pickList
         pick_list = [usr for usr in pick_list if usr != winners[i]]
@@ -74,8 +75,8 @@ def get_prize_update(plot=False):
     for i in range(num_winners):
         tmp_str = "{:,.0f}".format(int(prize_gold[i]))
         prize_pct_str = f"({100 * prize_dist[i]:>6.2f}%)"
-        prize_str.append(f"{raffle.utils.ordinal(i + 1) + ' Place:'}\n{tmp_str} gold\n{prize_pct_str}")
-        print(f"{raffle.utils.ordinal(i + 1) + ' Place: ':>10} | {tmp_str:>9} gold {prize_pct_str} |")
+        prize_str.append(f"{ordinal(i + 1) + ' Place:'}\n{tmp_str} gold\n{prize_pct_str}")
+        print(f"{ordinal(i + 1) + ' Place: ':>10} | {tmp_str:>9} gold {prize_pct_str} |")
     print(40 * "-")
     print(f"{'Total':>11} | {total_prize:>8,.0f} gold")
     print(f"*As of {datetime.now().strftime('%Y-%m-%d %I:%M %p')} ({tz})")

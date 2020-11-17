@@ -1,5 +1,5 @@
 import random
-import raffle
+from raffle.utils import ordinal
 import raffle.db.utils as rdbu
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,7 +12,7 @@ prize_tier_increment = 500000
 
 def get_prizes(entrants=None, prize_adds=None):
     if entrants is None or prize_adds is None:
-        entrants, prize_adds = rdbu.get_drawing_sales_summary()
+        entrants, prize_adds = rdbu.sales.get_drawing_sales_summary()
 
     tickets_sold = sum(n for _, n in entrants)
     prize_additions = sum(n for _, n in prize_adds)
@@ -26,7 +26,7 @@ def get_prizes(entrants=None, prize_adds=None):
 
 
 def get_winners():
-    entrants, pr_adds = rdbu.get_drawing_sales_summary()
+    entrants, pr_adds = rdbu.sales.get_drawing_sales_summary()
 
     prize_amounts, prize_dist, num_winners = get_prizes(entrants=entrants, prize_adds=pr_adds)
     prize_amounts = [int(p) for p in prize_amounts]
@@ -50,7 +50,7 @@ def get_winners():
         winner_name = random.choice(pick_list)
         winners.extend([(winner_name, i, prize_amounts[i])])
         prize_str = "{:,.0f}".format(prize_amounts[i])
-        print(f"\t{raffle.utils.ordinal(i+1) + ' Place:':>11} {winner_name:<15} |"
+        print(f"\t{ordinal(i + 1) + ' Place:':>11} {winner_name:<15} |"
               f"{prize_str:>10} gold ( {f'{100 * prize_dist[i]:.2f}% )':>9}")
         # remove all instances of this winner from the pickList
         pick_list = [usr for usr in pick_list if usr != winner_name]
@@ -76,8 +76,8 @@ def get_prize_update(plot=False):
     for i in range(num_winners):
         tmp_str = "{:,.0f}".format(int(prize_gold[i]))
         prize_pct_str = f"({100 * prize_dist[i]:>6.2f}%)"
-        prize_str.append(f"{raffle.utils.ordinal(i + 1) + ' Place:'}\n{tmp_str} gold\n{prize_pct_str}")
-        print(f"{raffle.utils.ordinal(i + 1) + ' Place: ':>10} | {tmp_str:>9} gold {prize_pct_str} |")
+        prize_str.append(f"{ordinal(i + 1) + ' Place:'}\n{tmp_str} gold\n{prize_pct_str}")
+        print(f"{ordinal(i + 1) + ' Place: ':>10} | {tmp_str:>9} gold {prize_pct_str} |")
     print(40 * "-")
     print(f"{'Total':>11} | {total_prize:>8,.0f} gold")
     print(f"*As of {datetime.now().strftime('%Y-%m-%d %I:%M %p')} ({tz})")
