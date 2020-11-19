@@ -8,9 +8,10 @@ Contains a set of python routines to read raffle entries from Google Sheets and 
 
 ### Windows
 2. Open a command prompt **_as administrator_** and navigate to your `[destination]`
-3. Create a new virtual environment using Python 3.8
+3. Create a new virtual environment using Python 3.8 (you may need to use the `python3` command depending on your 
+   path settings. I am using `python` because I only have Python 3.8 installed).
 
-    ```>> python3 -m venv .\venv```
+    ```>> python -m venv .\venv```
 4. Activate the virtual environment
 
     ```>> .\venv\Scripts\activate.bat```
