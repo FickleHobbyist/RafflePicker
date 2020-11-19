@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# RafflePicker output files
+/Greymoor Ravagers Raffle Entries *.txt
+PrizeUpdate.png
+
+slag/*
+.idea*
+PrizeTierModel_v2.py

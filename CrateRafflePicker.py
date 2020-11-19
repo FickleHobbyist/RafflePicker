@@ -12,7 +12,7 @@ def complete_entry(entry):
 
 
 # connect to the service account
-gc = gspread.service_account(filename='greymoor-ravager-1590443909240-071a0e2dcf39.json')
+gc = gspread.service_account(filename='raffle/greymoor-ravager-1590443909240-071a0e2dcf39.json')
 # open the workbook
 sh = gc.open_by_key('151kSSG2MDsASX4cP4d8-vG22I5xRYhW_RdCP4rYnhpc')
 # open the sheet
